@@ -30,7 +30,7 @@ enum class vm_opcode : unsigned char {
 template <std::size_t Bytes>
 struct vm_program {
     std::array<vm_opcode, Bytes * 8u + 1u> opcodes{};
-    std::array<unsigned char, Bytes * 5u> operands{};
+    std::array<unsigned char, Bytes * 6u> operands{};
 };
 
 template <typename T, bool IsEnum = std::is_enum_v<T>>
@@ -94,7 +94,7 @@ public:
     }
 
     T get() const {
-        byte_array bytes{};
+        byte_array bytes;
         const auto program = detail::make_vm_program<Seed, sizeof(storage_type)>();
         const auto suspicious = anti_analysis::detail::analysis_detected();
 
@@ -180,7 +180,7 @@ private:
         }
     }
 
-    byte_array encrypted_{};
+    byte_array encrypted_;
 };
 
 template <std::uint64_t Seed, typename T>

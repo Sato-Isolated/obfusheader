@@ -1,7 +1,14 @@
 cmake_minimum_required(VERSION 3.20)
+if(POLICY CMP0091)
+    cmake_policy(SET CMP0091 NEW)
+endif()
 project(obfusheader_v2_tests LANGUAGES CXX)
 
 option(OBFUSHEADER_BUILD_TESTS "Build obfusheader tests" ON)
+
+if(MSVC)
+    string(REPLACE "/EHsc" "" CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS}")
+endif()
 
 add_library(obfusheader INTERFACE)
 target_include_directories(obfusheader INTERFACE ${CMAKE_CURRENT_SOURCE_DIR}/include)
@@ -10,6 +17,18 @@ target_compile_features(obfusheader INTERFACE cxx_std_20)
 if(OBFUSHEADER_BUILD_TESTS)
     enable_testing()
     find_package(Python3 REQUIRED COMPONENTS Interpreter)
+
+    function(obfusheader_apply_strict_client_compile target_name)
+        if(MSVC)
+            target_compile_options(${target_name} PRIVATE /permissive- /Zc:preprocessor)
+        endif()
+    endfunction()
+
+    function(obfusheader_set_msvc_runtime target_name runtime_library)
+        if(MSVC)
+            set_property(TARGET ${target_name} PROPERTY MSVC_RUNTIME_LIBRARY "${runtime_library}")
+        endif()
+    endfunction()
 
     add_test(
         NAME obfusheader_public_surface
@@ -37,6 +56,20 @@ if(OBFUSHEADER_BUILD_TESTS)
     set_target_properties(obfusheader_anti_analysis_tests PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)
     add_test(NAME obfusheader_anti_analysis_runtime COMMAND obfusheader_anti_analysis_tests)
 
+    add_executable(obfusheader_syntax_stability_md tests/syntax_stability_tests.cpp)
+    target_link_libraries(obfusheader_syntax_stability_md PRIVATE obfusheader)
+    set_target_properties(obfusheader_syntax_stability_md PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)
+    obfusheader_apply_strict_client_compile(obfusheader_syntax_stability_md)
+    obfusheader_set_msvc_runtime(obfusheader_syntax_stability_md "MultiThreaded$<$<CONFIG:Debug>:Debug>DLL")
+    add_test(NAME obfusheader_syntax_stability_md_runtime COMMAND obfusheader_syntax_stability_md)
+
+    add_executable(obfusheader_syntax_stability_mt tests/syntax_stability_tests.cpp)
+    target_link_libraries(obfusheader_syntax_stability_mt PRIVATE obfusheader)
+    set_target_properties(obfusheader_syntax_stability_mt PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)
+    obfusheader_apply_strict_client_compile(obfusheader_syntax_stability_mt)
+    obfusheader_set_msvc_runtime(obfusheader_syntax_stability_mt "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    add_test(NAME obfusheader_syntax_stability_mt_runtime COMMAND obfusheader_syntax_stability_mt)
+
     add_executable(obfusheader_binary_fixture tests/binary_fixture.cpp)
     target_link_libraries(obfusheader_binary_fixture PRIVATE obfusheader)
     if(UNIX AND NOT APPLE)
@@ -55,4 +88,17 @@ if(OBFUSHEADER_BUILD_TESTS)
         NAME obfusheader_runtime_binary_scan
         COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/scan_binary.py $<TARGET_FILE:obfusheader_v2_tests> missing-module-for-test missing-symbol-for-test
     )
+
+    if(MSVC)
+        add_executable(obfusheader_no_crt_fixture tests/no_crt_fixture.cpp)
+        target_link_libraries(obfusheader_no_crt_fixture PRIVATE obfusheader kernel32)
+        target_compile_options(obfusheader_no_crt_fixture PRIVATE /permissive- /Zc:preprocessor /GS- /EHsc- /GR-)
+        target_link_options(obfusheader_no_crt_fixture PRIVATE /NODEFAULTLIB /ENTRY:entry /SUBSYSTEM:CONSOLE)
+        set_target_properties(obfusheader_no_crt_fixture PROPERTIES
+            CXX_STANDARD 20
+            CXX_STANDARD_REQUIRED YES
+            MSVC_RUNTIME_LIBRARY ""
+        )
+        add_test(NAME obfusheader_no_crt_runtime COMMAND obfusheader_no_crt_fixture)
+    endif()
 endif()

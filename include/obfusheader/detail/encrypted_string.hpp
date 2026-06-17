@@ -42,8 +42,9 @@ public:
     }
 
     void clear() {
-        for (auto& item : decrypted_buffer_) {
-            item = CharT{};
+        for (std::size_t i = 0; i < decrypted_buffer_.size(); ++i) {
+            volatile CharT* item = &decrypted_buffer_[i];
+            *item = CharT{};
         }
         cleared_ = true;
     }
@@ -101,8 +102,8 @@ private:
         is_decrypted_ = true;
     }
 
-    std::array<CharT, Size> encrypted_{};
-    std::array<CharT, Size> decrypted_buffer_{};
+    std::array<CharT, Size> encrypted_;
+    std::array<CharT, Size> decrypted_buffer_;
     bool is_decrypted_ = false;
     bool cleared_ = false;
 };

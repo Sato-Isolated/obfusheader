@@ -25,7 +25,7 @@ public:
     }
 
     T get() const {
-        byte_array bytes{};
+        byte_array bytes;
         const auto suspicious = anti_analysis::detail::analysis_detected();
         for (std::size_t i = 0; i < bytes.size(); ++i) {
             bytes[i] = decrypt_byte(encrypted_[i], i);
@@ -64,7 +64,7 @@ private:
         return byte;
     }
 
-    byte_array encrypted_{};
+    byte_array encrypted_;
 };
 
 template <std::uint64_t Seed, typename T>

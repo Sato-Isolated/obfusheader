@@ -15,7 +15,11 @@
 #define OH_STR(value) (::oh::make_string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
 #define OH_VAL(value) (::oh::make_value<OH_DETAIL_SEED>(value))
 #define OH_VM_VAL(value) (::oh::make_virtualized_value<OH_DETAIL_SEED>(value))
+#if defined(_MSC_VER) && defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL
 #define OH_CALL(function_ptr, ...) (::oh::call<OH_DETAIL_SEED>((function_ptr), __VA_ARGS__))
+#else
+#define OH_CALL(function_ptr, ...) (::oh::call<OH_DETAIL_SEED>((function_ptr) __VA_OPT__(,) __VA_ARGS__))
+#endif
 #define OH_BRANCH(condition, on_true, on_false) (::oh::branch<OH_DETAIL_SEED>((condition), (on_true), (on_false)))
 #define OH_IMPORT(module_name, symbol_name, signature) (::oh::import<signature>(OH_STR(module_name), OH_STR(symbol_name)))
 #define OH_PRESET(name) ::oh::preset::name

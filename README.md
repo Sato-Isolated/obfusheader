@@ -197,12 +197,23 @@ The verification suite covers:
 - repository hygiene for the public header surface
 - C++20 runtime behavior
 - C++23 runtime behavior
+- strict MSVC client syntax under `/permissive- /Zc:preprocessor`, including
+  `if` statements with initializers and `OH_CALL(&fn)` with no call arguments
+- explicit MSVC runtime coverage for both dynamic CRT (`/MD`) and static CRT
+  (`/MT`) builds
+- Windows no-default-CRT linking with a custom `entry` point, `/NODEFAULTLIB`,
+  `/GS-`, `/EHsc-`, `/GR-`, and `kernel32.lib`
 - `strong` preset behavior
 - forced anti-analysis poisoning behavior
 - release binary scanning for protected string cleartext
 - release binary scanning for protected little-endian scalar bytes
 - release binary scanning for protected import names
 - seeded build variation through `OH_USER_SEED`
+
+The no-default-CRT fixture verifies that the core primitives can link and run in
+a Windows binary with a custom entry point when the consuming code also avoids a
+standard CRT startup path. It is not a guarantee that a normal `main` executable
+or arbitrary user code can omit the CRT.
 
 Run binary scans against optimized release builds. Debug builds can retain
 compiler metadata, unoptimized constants, and diagnostics that are not
@@ -216,6 +227,8 @@ include/
   obfusheader/detail/             Implementation modules
 tests/
   v2_tests.cpp                    Runtime coverage for public primitives
+  syntax_stability_tests.cpp      Strict client syntax and CRT runtime matrix coverage
+  no_crt_fixture.cpp              Windows custom-entry no-default-CRT fixture
   strong_preset_tests.cpp         Strong preset coverage
   anti_analysis_tests.cpp         Forced anti-analysis poison coverage
   binary_fixture.cpp              Optimized binary scan fixture
