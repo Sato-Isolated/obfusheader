@@ -38,6 +38,22 @@ int main() {
         return 1;
     }
 
+    if (auto text = OH_WSTR(L"if-wide-\u03a9-text"); require(std::wstring_view(text.c_str()) == L"if-wide-\u03a9-text", "OH_WSTR works in if initializer") != 0) {
+        return 1;
+    }
+
+    if (auto text = OH_U8STR(u8"if-u8-\u03a9-text"); require(std::u8string_view(text.c_str()) == u8"if-u8-\u03a9-text", "OH_U8STR works in if initializer") != 0) {
+        return 1;
+    }
+
+    if (auto text = OH_U16STR(u"if-u16-\u03a9-text"); require(std::u16string_view(text.c_str()) == u"if-u16-\u03a9-text", "OH_U16STR works in if initializer") != 0) {
+        return 1;
+    }
+
+    if (auto text = OH_U32STR(U"if-u32-\U0001f642-text"); require(std::u32string_view(text.c_str()) == U"if-u32-\U0001f642-text", "OH_U32STR works in if initializer") != 0) {
+        return 1;
+    }
+
     if (auto selected = OH_BRANCH(true, [] { return 7; }, [] { return 9; }); require(selected == 7, "OH_BRANCH works in if initializer") != 0) {
         return 1;
     }

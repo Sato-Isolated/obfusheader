@@ -82,11 +82,11 @@ if(OBFUSHEADER_BUILD_TESTS)
     set_target_properties(obfusheader_binary_fixture PROPERTIES CXX_STANDARD 20 CXX_STANDARD_REQUIRED YES)
     add_test(
         NAME obfusheader_binary_scan
-        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/scan_binary.py $<TARGET_FILE:obfusheader_binary_fixture> needle-v2-binary-scan-secret hex:cdab3412
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/scan_binary.py $<TARGET_FILE:obfusheader_binary_fixture> needle-v2-binary-scan-secret wide-binary-scan-secret u8-binary-scan-secret u16-binary-scan-secret u32-binary-scan-secret hex:cdab3412
     )
     add_test(
         NAME obfusheader_runtime_binary_scan
-        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/scan_binary.py $<TARGET_FILE:obfusheader_v2_tests> missing-module-for-test missing-symbol-for-test
+        COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/tools/scan_binary.py $<TARGET_FILE:obfusheader_v2_tests> missing-module-for-test missing-symbol-for-test missing-void-symbol-for-test
     )
 
     if(MSVC)

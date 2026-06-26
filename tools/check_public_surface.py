@@ -7,6 +7,10 @@ UMBRELLA = ROOT / "include" / "obfusheader.hpp"
 
 required_macros = {
     "OH_STR",
+    "OH_WSTR",
+    "OH_U8STR",
+    "OH_U16STR",
+    "OH_U32STR",
     "OH_VAL",
     "OH_VM_VAL",
     "OH_CALL",

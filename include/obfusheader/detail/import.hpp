@@ -4,6 +4,7 @@
 #include "anti_analysis.hpp"
 #include "encrypted_string.hpp"
 
+#include <type_traits>
 #include <utility>
 
 #if defined(_WIN32)
@@ -19,6 +20,8 @@ namespace oh {
 
 template <typename Signature>
 class imported_symbol {
+    static_assert(std::is_pointer_v<Signature> && std::is_function_v<std::remove_pointer_t<Signature>>, "OH_IMPORT expects a function pointer signature");
+
 public:
     constexpr imported_symbol() = default;
     explicit imported_symbol(Signature pointer) : pointer_(pointer) {}
@@ -36,6 +39,27 @@ public:
         return pointer_(std::forward<Args>(args)...);
     }
 
+    template <typename Fallback, typename... Args>
+    std::invoke_result_t<Signature, Args...> invoke_or(Fallback&& fallback, Args&&... args) const {
+        using result_type = std::invoke_result_t<Signature, Args...>;
+        static_assert(!std::is_void_v<result_type>, "invoke_or is only available for non-void imported functions");
+        if (pointer_ == nullptr) {
+            return static_cast<result_type>(std::forward<Fallback>(fallback));
+        }
+        return pointer_(std::forward<Args>(args)...);
+    }
+
+    template <typename... Args>
+    bool invoke_if(Args&&... args) const {
+        using result_type = std::invoke_result_t<Signature, Args...>;
+        static_assert(std::is_void_v<result_type>, "invoke_if is only available for void imported functions");
+        if (pointer_ == nullptr) {
+            return false;
+        }
+        pointer_(std::forward<Args>(args)...);
+        return true;
+    }
+
     Signature get() const {
         return pointer_;
     }
@@ -46,6 +70,7 @@ private:
 
 template <typename Signature, typename ModuleName, typename SymbolName>
 imported_symbol<Signature> import(ModuleName module_name, SymbolName symbol_name) {
+    static_assert(std::is_pointer_v<Signature> && std::is_function_v<std::remove_pointer_t<Signature>>, "OH_IMPORT expects a function pointer signature");
     if (anti_analysis::detail::analysis_detected()) {
         module_name.clear();
         symbol_name.clear();

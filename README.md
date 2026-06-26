@@ -11,9 +11,11 @@ The project focuses on:
 - typed primitives for localized protection
 - per-call-site entropy from `__FILE__`, `__LINE__`, `__COUNTER__`, and
   optional `OH_USER_SEED`
+- explicit narrow, wide, UTF-8, UTF-16, and UTF-32 string literal wrappers
 - aggressive-by-default value, string, call, branch, and import hardening
 - anti-analysis poisoning across public primitives, with an explicit opt-out
-- release-build binary scanning for protected strings and scalar byte markers
+- release-build binary scanning for protected strings across common encodings
+  and scalar byte markers
 
 ## Quick Start
 
@@ -56,6 +58,10 @@ cl /std:c++20 /O2 /Iinclude example.cpp
 | Macro | Purpose |
 | --- | --- |
 | `OH_STR("text")` | Stores a string literal encrypted and decrypts it on demand. |
+| `OH_WSTR(L"text")` | Stores a `wchar_t` string literal encrypted and decrypts it on demand. |
+| `OH_U8STR(u8"text")` | Stores a `char8_t` UTF-8 string literal encrypted and decrypts it on demand. |
+| `OH_U16STR(u"text")` | Stores a `char16_t` UTF-16 string literal encrypted and decrypts it on demand. |
+| `OH_U32STR(U"text")` | Stores a `char32_t` UTF-32 string literal encrypted and decrypts it on demand. |
 | `OH_VAL(value)` | Stores an arithmetic or enum constant in an encrypted wrapper. |
 | `OH_VM_VAL(value)` | Stores an arithmetic or enum constant behind a small seed-specialized bytecode interpreter. |
 | `OH_CALL(fn, ...)` | Calls a function pointer through a small seeded indirection table. |
@@ -69,10 +75,17 @@ cl /std:c++20 /O2 /Iinclude example.cpp
 auto secret = OH_STR("api-token-marker");
 use(secret.c_str());
 secret.clear();
+
+auto wide = OH_WSTR(L"wide-marker");
+auto utf8 = OH_U8STR(u8"utf8-marker");
+auto utf16 = OH_U16STR(u"utf16-marker");
+auto utf32 = OH_U32STR(U"utf32-marker");
 ```
 
-`OH_STR` decrypts into an internal buffer when `c_str()` or `view()` is called.
-Call `clear()` when the plaintext is no longer needed.
+String wrappers decrypt into an internal buffer when `c_str()` or `view()` is
+called. Call `clear()` when the plaintext is no longer needed. The macro name
+must match the literal character type; for example, use `OH_U16STR(u"text")`
+for a UTF-16 literal instead of passing it to `OH_STR`.
 
 ### Values
 
@@ -110,11 +123,19 @@ auto imported_puts = OH_IMPORT("msvcrt.dll", "puts", puts_t);
 if (imported_puts) {
     imported_puts("resolved dynamically");
 }
+
+auto safe_result = imported_puts.invoke_or(-1, "resolved dynamically");
 ```
 
 On Windows this uses `GetModuleHandleA`, `LoadLibraryA`, and `GetProcAddress`.
-On Linux it uses `dlopen` and `dlsym`. Unsupported platforms return an empty
-symbol wrapper.
+On Linux it uses `dlopen` and `dlsym`; the library handle is intentionally
+retained so the resolved symbol remains valid for the process lifetime.
+Unsupported platforms return an empty symbol wrapper.
+
+`OH_IMPORT` expects a function pointer signature. `operator()` is kept for
+direct-call compatibility and assumes `available() == true`. For safer missing
+symbol handling, use `invoke_or(fallback, args...)` with non-void functions or
+`invoke_if(args...)` with void functions.
 
 ## Presets and Seeds
 
@@ -205,7 +226,8 @@ The verification suite covers:
   `/GS-`, `/EHsc-`, `/GR-`, and `kernel32.lib`
 - `strong` preset behavior
 - forced anti-analysis poisoning behavior
-- release binary scanning for protected string cleartext
+- release binary scanning for protected string cleartext across UTF-8,
+  UTF-16LE, UTF-16BE, UTF-32LE, and UTF-32BE marker encodings
 - release binary scanning for protected little-endian scalar bytes
 - release binary scanning for protected import names
 - seeded build variation through `OH_USER_SEED`

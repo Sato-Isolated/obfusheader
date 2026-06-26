@@ -32,6 +32,26 @@ int main() {
         return 1;
     }
 
+    auto wide_secret = OH_WSTR(L"analysis-wide-\u03a9-text");
+    if (require(std::wstring_view(wide_secret.c_str()) != L"analysis-wide-\u03a9-text", "OH_WSTR poisons wide text under forced analysis") != 0) {
+        return 1;
+    }
+
+    auto u8_secret = OH_U8STR(u8"analysis-u8-\u03a9-text");
+    if (require(std::u8string_view(u8_secret.c_str()) != u8"analysis-u8-\u03a9-text", "OH_U8STR poisons UTF-8 text under forced analysis") != 0) {
+        return 1;
+    }
+
+    auto u16_secret = OH_U16STR(u"analysis-u16-\u03a9-text");
+    if (require(std::u16string_view(u16_secret.c_str()) != u"analysis-u16-\u03a9-text", "OH_U16STR poisons UTF-16 text under forced analysis") != 0) {
+        return 1;
+    }
+
+    auto u32_secret = OH_U32STR(U"analysis-u32-\U0001f642-text");
+    if (require(std::u32string_view(u32_secret.c_str()) != U"analysis-u32-\U0001f642-text", "OH_U32STR poisons UTF-32 text under forced analysis") != 0) {
+        return 1;
+    }
+
     const auto value = OH_VAL(0x44556677u);
     if (require(value.get() != 0x44556677u, "OH_VAL poisons scalar under forced analysis") != 0) {
         return 1;

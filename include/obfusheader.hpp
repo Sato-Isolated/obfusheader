@@ -13,6 +13,10 @@
 #define OH_DETAIL_SEED ::oh::detail::seed_from_context(__FILE__, __LINE__, __COUNTER__)
 
 #define OH_STR(value) (::oh::make_string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
+#define OH_WSTR(value) (::oh::make_wide_string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
+#define OH_U8STR(value) (::oh::make_u8string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
+#define OH_U16STR(value) (::oh::make_u16string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
+#define OH_U32STR(value) (::oh::make_u32string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
 #define OH_VAL(value) (::oh::make_value<OH_DETAIL_SEED>(value))
 #define OH_VM_VAL(value) (::oh::make_virtualized_value<OH_DETAIL_SEED>(value))
 #if defined(_MSC_VER) && defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL
