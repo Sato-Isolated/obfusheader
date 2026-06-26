@@ -5,6 +5,7 @@
 #include "obfusheader/detail/branch.hpp"
 #include "obfusheader/detail/call.hpp"
 #include "obfusheader/detail/config.hpp"
+#include "obfusheader/detail/encrypted_blob.hpp"
 #include "obfusheader/detail/encrypted_string.hpp"
 #include "obfusheader/detail/encrypted_value.hpp"
 #include "obfusheader/detail/import.hpp"
@@ -17,6 +18,8 @@
 #define OH_U8STR(value) (::oh::make_u8string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
 #define OH_U16STR(value) (::oh::make_u16string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
 #define OH_U32STR(value) (::oh::make_u32string<OH_DETAIL_SEED, ::oh::fixed_string{value}>())
+#define OH_BLOB(...) (::oh::make_blob<OH_DETAIL_SEED>(::oh::detail::blob_bytes<__VA_ARGS__>{}))
+#define OH_STR_EQ(value, candidate) (::oh::string_equals<OH_DETAIL_SEED, ::oh::fixed_string{value}>((candidate)))
 #define OH_VAL(value) (::oh::make_value<OH_DETAIL_SEED>(value))
 #define OH_VM_VAL(value) (::oh::make_virtualized_value<OH_DETAIL_SEED>(value))
 #if defined(_MSC_VER) && defined(_MSVC_TRADITIONAL) && _MSVC_TRADITIONAL

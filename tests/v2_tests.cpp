@@ -91,6 +91,43 @@ int main() {
         return 1;
     }
 
+    auto blob = OH_BLOB(0xde, 0xad, 0xbe, 0xef);
+    if (require(blob.size() == 4u, "OH_BLOB reports byte count") != 0) {
+        return 1;
+    }
+    auto blob_view = blob.view();
+    if (require(blob_view.size() == 4u
+            && blob_view[0] == 0xdeu
+            && blob_view[1] == 0xadu
+            && blob_view[2] == 0xbeu
+            && blob_view[3] == 0xefu,
+            "OH_BLOB decrypts byte view") != 0) {
+        return 1;
+    }
+    const auto* blob_data = blob.data();
+    if (require(blob_data[0] == 0xdeu && blob_data[3] == 0xefu, "OH_BLOB exposes decrypted data") != 0) {
+        return 1;
+    }
+    blob.clear();
+    if (require(blob.data()[0] == 0u, "OH_BLOB clears decrypted bytes") != 0) {
+        return 1;
+    }
+
+    const char* string_candidate = "string-eq-secret";
+    if (require(OH_STR_EQ("string-eq-secret", string_candidate), "OH_STR_EQ matches const char candidates") != 0) {
+        return 1;
+    }
+    const std::string_view string_view_candidate = "string-eq-secret";
+    if (require(OH_STR_EQ("string-eq-secret", string_view_candidate), "OH_STR_EQ matches string_view candidates") != 0) {
+        return 1;
+    }
+    if (require(!OH_STR_EQ("string-eq-secret", "string-eq-secret-x"), "OH_STR_EQ rejects longer candidates") != 0) {
+        return 1;
+    }
+    if (require(!OH_STR_EQ("string-eq-secret", std::string_view("string-eq-secreu")), "OH_STR_EQ rejects different contents") != 0) {
+        return 1;
+    }
+
     const auto number = OH_VAL(0x12345678u);
     if (require(number.get() == 0x12345678u, "OH_VAL decrypts unsigned scalar") != 0) {
         return 1;

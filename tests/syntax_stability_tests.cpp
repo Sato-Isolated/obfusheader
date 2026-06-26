@@ -54,6 +54,14 @@ int main() {
         return 1;
     }
 
+    if (auto blob = OH_BLOB(0x10, 0x20, 0x30); require(blob.size() == 3u && blob.data()[2] == 0x30u, "OH_BLOB works in if initializer") != 0) {
+        return 1;
+    }
+
+    if (auto matched = OH_STR_EQ("if-string-eq-text", std::string_view("if-string-eq-text")); require(matched, "OH_STR_EQ works in if initializer") != 0) {
+        return 1;
+    }
+
     if (auto selected = OH_BRANCH(true, [] { return 7; }, [] { return 9; }); require(selected == 7, "OH_BRANCH works in if initializer") != 0) {
         return 1;
     }

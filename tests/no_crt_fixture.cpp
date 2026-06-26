@@ -15,6 +15,8 @@ int add(int lhs, int rhs) {
 extern "C" int entry() {
     auto text = OH_STR("no-crt-text");
     const char* raw = text.c_str();
+    auto blob = OH_BLOB(0x41, 0x42, 0x43);
+    const auto* blob_raw = blob.data();
     const auto value = OH_VAL(0x12345678u);
     const auto vm_value = OH_VM_VAL(0xabcdef12u);
     const auto sum = OH_CALL(&add, 2, 3);
@@ -36,6 +38,9 @@ extern "C" int entry() {
         && raw[9] == 'x'
         && raw[10] == 't'
         && raw[11] == '\0'
+        && blob_raw[0] == 0x41u
+        && blob_raw[1] == 0x42u
+        && blob_raw[2] == 0x43u
         && value.get() == 0x12345678u
         && vm_value.get() == 0xabcdef12u
         && sum == 5
@@ -45,5 +50,6 @@ extern "C" int entry() {
         && get_current_process_id() != 0ul;
 
     text.clear();
+    blob.clear();
     return ok ? 0 : 1;
 }

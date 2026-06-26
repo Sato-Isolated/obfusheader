@@ -52,6 +52,20 @@ int main() {
         return 1;
     }
 
+    auto blob = OH_BLOB(0xde, 0xad, 0xbe, 0xef);
+    const auto blob_view = blob.view();
+    if (require(blob_view[0] != 0xdeu
+            && blob_view[1] != 0xadu
+            && blob_view[2] != 0xbeu
+            && blob_view[3] != 0xefu,
+            "OH_BLOB poisons bytes under forced analysis") != 0) {
+        return 1;
+    }
+
+    if (require(!OH_STR_EQ("analysis-string-eq-secret", "analysis-string-eq-secret"), "OH_STR_EQ rejects matches under forced analysis") != 0) {
+        return 1;
+    }
+
     const auto value = OH_VAL(0x44556677u);
     if (require(value.get() != 0x44556677u, "OH_VAL poisons scalar under forced analysis") != 0) {
         return 1;

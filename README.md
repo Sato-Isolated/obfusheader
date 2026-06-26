@@ -12,7 +12,8 @@ The project focuses on:
 - per-call-site entropy from `__FILE__`, `__LINE__`, `__COUNTER__`, and
   optional `OH_USER_SEED`
 - explicit narrow, wide, UTF-8, UTF-16, and UTF-32 string literal wrappers
-- aggressive-by-default value, string, call, branch, and import hardening
+- encrypted byte blobs and bounded protected string comparisons
+- aggressive-by-default value, string, blob, call, branch, and import hardening
 - anti-analysis poisoning across public primitives, with an explicit opt-out
 - release-build binary scanning for protected strings across common encodings
   and scalar byte markers
@@ -37,12 +38,14 @@ int main() {
 
     auto value = OH_VAL(0x12345678u);
     auto vm_value = OH_VM_VAL(0x89abcdefu);
+    auto blob = OH_BLOB(0xde, 0xad, 0xbe, 0xef);
 
     auto sum = OH_CALL(&add, value.get(), 10);
     auto selected = OH_BRANCH(sum > 0,
         [] { return 1; },
         [] { return 0; });
 
+    blob.clear();
     return selected == 1 && vm_value.get() == 0x89abcdefu ? 0 : 1;
 }
 ```
@@ -62,6 +65,8 @@ cl /std:c++20 /O2 /Iinclude example.cpp
 | `OH_U8STR(u8"text")` | Stores a `char8_t` UTF-8 string literal encrypted and decrypts it on demand. |
 | `OH_U16STR(u"text")` | Stores a `char16_t` UTF-16 string literal encrypted and decrypts it on demand. |
 | `OH_U32STR(U"text")` | Stores a `char32_t` UTF-32 string literal encrypted and decrypts it on demand. |
+| `OH_BLOB(bytes...)` | Stores one or more byte constants encrypted and decrypts them on demand. |
+| `OH_STR_EQ("text", candidate)` | Compares a narrow protected string literal with a `std::string_view`-compatible candidate, then clears the protected buffer. |
 | `OH_VAL(value)` | Stores an arithmetic or enum constant in an encrypted wrapper. |
 | `OH_VM_VAL(value)` | Stores an arithmetic or enum constant behind a small seed-specialized bytecode interpreter. |
 | `OH_CALL(fn, ...)` | Calls a function pointer through a small seeded indirection table. |
@@ -86,6 +91,42 @@ String wrappers decrypt into an internal buffer when `c_str()` or `view()` is
 called. Call `clear()` when the plaintext is no longer needed. The macro name
 must match the literal character type; for example, use `OH_U16STR(u"text")`
 for a UTF-16 literal instead of passing it to `OH_STR`.
+
+### Blobs
+
+```cpp
+auto signature = OH_BLOB(0xde, 0xad, 0xbe, 0xef);
+auto bytes = signature.view();
+
+if (bytes.size() == 4 && bytes[0] == 0xde) {
+    use_bytes(bytes.data(), bytes.size());
+}
+
+signature.clear();
+```
+
+`OH_BLOB` accepts at least one integer byte constant in the range `[0, 255]`.
+It is useful for small byte markers, protocol constants, signatures, or compact
+keys that should not sit in the binary as a contiguous cleartext byte sequence.
+Like strings, blobs decrypt into an internal buffer and should be cleared after
+use.
+
+### Protected String Compare
+
+```cpp
+std::string_view user_input = read_token();
+
+if (OH_STR_EQ("expected-token", user_input)) {
+    accept();
+}
+```
+
+`OH_STR_EQ` currently targets narrow `char` string literals. The candidate must
+be convertible to `std::string_view`, such as `const char*`, `std::string_view`,
+or `std::string`. The comparison does not exit early on content mismatch and it
+clears the protected string wrapper before returning. This reduces plaintext
+exposure time; it is not a cryptographic authentication primitive or a formal
+constant-time guarantee.
 
 ### Values
 
@@ -137,6 +178,47 @@ direct-call compatibility and assumes `available() == true`. For safer missing
 symbol handling, use `invoke_or(fallback, args...)` with non-void functions or
 `invoke_if(args...)` with void functions.
 
+## Choosing a Primitive
+
+| Need | Prefer | Notes |
+| --- | --- | --- |
+| Hide a short text literal | `OH_STR` or typed string variants | Call `clear()` after `c_str()` or `view()`. |
+| Hide raw bytes | `OH_BLOB` | Keep blobs small and clear them after use. |
+| Compare user input with a protected narrow literal | `OH_STR_EQ` | Keeps the protected literal lifetime short; not a password hashing substitute. |
+| Hide an arithmetic or enum constant | `OH_VAL` | Lower runtime cost than the VM path. |
+| Add stronger scalar recovery indirection | `OH_VM_VAL` or `strong` preset | Higher runtime cost, useful for selected constants. |
+| Hide a local function-pointer call | `OH_CALL` | Function pointer only; does not change C++ call semantics. |
+| Hide a simple local branch decision | `OH_BRANCH` | Evaluates only the selected callable. |
+| Resolve a platform symbol lazily | `OH_IMPORT` | Resolve once, check `available()`, then reuse the wrapper. |
+
+## Operational Notes
+
+Plaintext lifetime:
+
+- `OH_STR`, typed string wrappers, and `OH_BLOB` decrypt into mutable internal
+  buffers.
+- The plaintext remains available after `c_str()`, `view()`, or `data()` until
+  `clear()` is called or the wrapper is destroyed.
+- `OH_STR_EQ` creates a short-lived protected string wrapper and clears it
+  before returning.
+
+Thread-safety:
+
+- Treat each wrapper object as mutable state.
+- Do not share the same decrypted wrapper across threads without external
+  synchronization.
+- Prefer creating protected wrappers close to the use site instead of storing
+  them globally.
+
+Runtime cost:
+
+- `OH_STR` and `OH_BLOB` are O(n) in the number of code units or bytes.
+- `OH_VAL` is the light scalar path.
+- `OH_VM_VAL` and the `strong` preset add interpreter overhead and should be
+  reserved for constants where the extra cost is justified.
+- `OH_IMPORT` performs platform symbol resolution; resolve once and reuse the
+  returned wrapper where possible.
+
 ## Presets and Seeds
 
 The default preset is `balanced`:
@@ -174,6 +256,8 @@ library checks local and remote debugger state. On Linux it checks
 poisoned outputs instead of intentionally crashing:
 
 - `OH_STR` decrypts to a wrong but still terminated buffer.
+- `OH_BLOB` decrypts to wrong bytes.
+- `OH_STR_EQ` returns false for protected literals that would otherwise match.
 - `OH_VAL` and `OH_VM_VAL` return stable incorrect values.
 - `OH_CALL` does not invoke the target and returns a poisoned value for
   non-void functions.
@@ -228,6 +312,8 @@ The verification suite covers:
 - forced anti-analysis poisoning behavior
 - release binary scanning for protected string cleartext across UTF-8,
   UTF-16LE, UTF-16BE, UTF-32LE, and UTF-32BE marker encodings
+- release binary scanning for protected `OH_STR_EQ` literals
+- release binary scanning for protected blob byte markers
 - release binary scanning for protected little-endian scalar bytes
 - release binary scanning for protected import names
 - seeded build variation through `OH_USER_SEED`
@@ -270,6 +356,9 @@ strategy:
 - validate behavior in optimized release builds, not only debug builds
 - vary `OH_USER_SEED` between release lines when practical
 - keep protected scopes small and explicit
+- call `clear()` as soon as decrypted strings or blobs are no longer needed
+- do not treat `OH_STR_EQ` as password storage, password hashing, or a remote
+  authentication boundary
 - prefer `OH_VM_VAL` or the `strong` preset only where the additional runtime
   cost is justified
 

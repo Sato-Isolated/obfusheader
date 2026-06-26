@@ -11,6 +11,8 @@ required_macros = {
     "OH_U8STR",
     "OH_U16STR",
     "OH_U32STR",
+    "OH_BLOB",
+    "OH_STR_EQ",
     "OH_VAL",
     "OH_VM_VAL",
     "OH_CALL",

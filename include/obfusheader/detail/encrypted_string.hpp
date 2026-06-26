@@ -183,6 +183,53 @@ consteval auto make_u32string() {
     return make_typed_string<char32_t, Seed, Text>();
 }
 
+namespace detail {
+
+inline std::string_view candidate_string_view(std::string_view value) {
+    return value;
+}
+
+inline std::string_view candidate_string_view(const char* value) {
+    return value == nullptr ? std::string_view{} : std::string_view(value);
+}
+
+template <std::size_t Size>
+constexpr std::string_view candidate_string_view(const char (&value)[Size]) {
+    return std::string_view(value, Size == 0u ? 0u : Size - 1u);
+}
+
+template <typename Candidate>
+std::string_view candidate_string_view(const Candidate& value) {
+    return std::string_view(value);
+}
+
+inline bool string_view_equal_masked(std::string_view lhs, std::string_view rhs) {
+    auto diff = lhs.size() ^ rhs.size();
+    const auto max_size = lhs.size() > rhs.size() ? lhs.size() : rhs.size();
+    for (std::size_t i = 0; i < max_size; ++i) {
+        const auto left = i < lhs.size() ? static_cast<unsigned char>(lhs[i]) : 0u;
+        const auto right = i < rhs.size() ? static_cast<unsigned char>(rhs[i]) : 0u;
+        diff |= static_cast<std::size_t>(left ^ right);
+    }
+    return diff == 0u;
+}
+
+} // namespace detail
+
+template <std::uint64_t Seed, fixed_string Text, typename Candidate>
+bool string_equals(const Candidate& candidate) {
+    using text_type = std::remove_cv_t<decltype(Text)>;
+    using char_type = typename text_type::value_type;
+    static_assert(std::is_same_v<char_type, char>, "OH_STR_EQ supports narrow char string literals");
+
+    auto secret = make_string<Seed, Text>();
+    const auto secret_view = secret.view();
+    const auto candidate_view = detail::candidate_string_view(candidate);
+    const auto matched = detail::string_view_equal_masked(secret_view, candidate_view);
+    secret.clear();
+    return matched;
+}
+
 } // namespace oh
 
 #endif
